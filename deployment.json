@@ -1,0 +1,8 @@
+{
+  "network": "preprod",
+  "contract": "degree",
+  "contractAddress": "73354cd49f7195d6de3905c85d31d41a05610b5be9e7fa6d3ac40c9483d6202d",
+  "transactionHash": "d83f10008cef94ebe27f1a793b4d2600f6c59d44a1951637ca08d39f2283fad4",
+  "transactionId": 498532,
+  "verifiedBy": "Midnight Preprod indexer"
+}
