@@ -1,5 +1,7 @@
 # Academic Credential Attestation
 
+![Frontend CI](https://github.com/JanhaveePhadnis/academic-credential-attestation/actions/workflows/frontend-ci.yml/badge.svg?branch=main) ![Contract CI](https://github.com/JanhaveePhadnis/academic-credential-attestation/actions/workflows/contract-ci.yml/badge.svg?branch=main)
+
 A registrar-facing proof desk for confirming education and GPA policy without distributing a student transcript.
 
 ## The registrar workflow
@@ -58,3 +60,6 @@ Push validation covers the frontend and Compact contract independently. The rele
 
 Demo video: [view the registrar console](https://drive.google.com/file/d/1rl1urj_zurCpibJB7A9cArWw7THAGZ_e/view?usp=sharing).
 
+## Verification
+
+Privacy is the product feature: the verifier receives only the required degree-policy result, while the student transcript and credential values remain private. Run `npm test`, `npm run compile`, and `npm run build`; the five contract scenarios are documented in [TESTING.md](./TESTING.md), the product scope is in [PROPOSAL.md](./PROPOSAL.md), and both CI workflows run on every push and pull request.
