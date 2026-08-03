@@ -26,17 +26,21 @@ The `degree` contract provides:
 
 Student name, ID, exact GPA, and course history are not part of the public verification result.
 
-## Preprod proof record
+## Preview proof record
 
 | Field | Value |
 | --- | --- |
-| Network | Midnight Preprod |
+| Network | Midnight Preview |
 | Contract | `degree` |
-| Address | `73354cd49f7195d6de3905c85d31d41a05610b5be9e7fa6d3ac40c9483d6202d` |
-| Deployment transaction | `d83f10008cef94ebe27f1a793b4d2600f6c59d44a1951637ca08d39f2283fad4` |
-| Status | Confirmed by Midnight Preprod indexer |
+| Address | `9f6508250c46bccc23195165da276b4d4136c734144280a49cf9087c31bbb35c` |
+| Deployment transaction | `0079b721fc3cb172722acb890c676741838f1f1db43c24b5c7707b90c6086661ca` |
+| Deployer | `mn_addr_preview12eq24yq2c3w2flhnvszgtkzhvuhptlggnm5y0yzmg8rm35fk9htqxutkpv` |
+| Timestamp | `2026-08-03T18:50:32.214Z` |
+| Status | Confirmed by Midnight Preview indexer |
 
 ## Build it yourself
+
+For registrar testing, request tNight from the [Midnight Preview faucet](https://faucet.preview.midnight.network/).
 
 ```bash
 npm install
@@ -52,7 +56,7 @@ For a configured testnet deployment:
 npm run deploy
 ```
 
-Keep issuer signing material and wallet recovery data outside the repository. This implementation is a Preprod demonstration, not a replacement for institutional accreditation or legal records.
+Keep issuer signing material and wallet recovery data outside the repository. This implementation is a Preview demonstration, not a replacement for institutional accreditation or legal records.
 
 ## CI/CD map
 
