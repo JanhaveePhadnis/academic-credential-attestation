@@ -34,7 +34,7 @@ export default function App() {
 
   const deploySteps = [
     "Compiling academic credentials contract...",
-    "Spawning Preprod transaction block...",
+    "Spawning Preview transaction block...",
     "Publishing university key directory anchor..."
   ];
 
@@ -66,7 +66,7 @@ export default function App() {
         throw new Error('No Midnight wallet connector was detected. Install 1AM or Lace and unlock it.');
       }
 
-      const connected = await wallet.connect(import.meta.env.VITE_NETWORK_ID || 'preprod');
+      const connected = await wallet.connect(import.meta.env.VITE_NETWORK_ID || 'preview');
       (window as any).__midnightConnectedWallet = connected;
       const addressInfo = await connected.getUnshieldedAddress();
       const balances = await connected.getUnshieldedBalances();
@@ -100,8 +100,8 @@ export default function App() {
 
   const requestFaucet = () => {
     if (!walletConnected) return;
-    window.open(import.meta.env.VITE_FAUCET_URL || 'https://midnight-tmnight-preprod.nethermind.dev/', '_blank', 'noopener,noreferrer');
-    logTransaction('—', 'FAUCET OPENED', '—', 'Funding must be confirmed by the Midnight Preprod Faucet and wallet balance refresh.');
+    window.open(import.meta.env.VITE_FAUCET_URL || 'https://faucet.preview.midnight.network/', '_blank', 'noopener,noreferrer');
+    logTransaction('—', 'FAUCET OPENED', '—', 'Funding must be confirmed by the official Midnight Preview faucet and wallet balance refresh.');
   };
 
   const deployContractAction = async () => {
@@ -117,7 +117,7 @@ export default function App() {
       const result = await deployDegreeContract(connectedWallet);
       setContractAddress(result.contractAddress);
       setContractDeployed(true);
-      logTransaction(result.txId, 'CONTRACT DEPLOYMENT SUBMITTED', '—', 'degree deployed on Midnight Preprod at ' + result.contractAddress);
+      logTransaction(result.txId, 'CONTRACT DEPLOYMENT SUBMITTED', '—', 'degree deployed on Midnight Preview at ' + result.contractAddress);
     } catch (err) {
       console.error('Browser deployment failed:', err);
       alert(err instanceof Error ? err.message : 'Browser deployment failed.');
@@ -143,7 +143,7 @@ export default function App() {
             setContractDeployed(true);
             setIsDeploying(false);
             setWalletBalance(prevBal => (parseFloat(prevBal) - 15.5).toFixed(2));
-            logTransaction('0xdep1...88cc', 'CONTRACT DEPLOYED', '-15.50 tNIGHT', 'Deployed degree.compact contract onto Preprod');
+            logTransaction('0xdep1...88cc', 'CONTRACT DEPLOYED', '-15.50 tNIGHT', 'Deployed degree.compact contract onto Preview');
           }, 800);
           return prev;
         }
@@ -233,7 +233,7 @@ export default function App() {
           </div>
         </div>
         <div className="home-dashboard__grid">
-          <article className="home-card"><span>Network</span><strong>Midnight Preprod</strong><small>{contractDeployed ? 'Contract verified' : 'Contract setup pending'}</small></article>
+          <article className="home-card"><span>Network</span><strong>Midnight Preview</strong><small>{contractDeployed ? 'Contract verified' : 'Contract setup pending'}</small></article>
           <article className="home-card"><span>Current signal</span><strong>University issuer online</strong><small>GPA stays private</small></article>
           <article className="home-card"><span>Wallet session</span><strong>{walletConnected ? 'Connected' : 'Not connected'}</strong><small>{walletConnected ? walletBalance + ' tNIGHT available' : 'Connect 1AM to continue'}</small></article>
           <article className="home-card"><span>Contract address</span><strong className="home-address">{contractAddress ? contractAddress.slice(0, 14) + '…' : 'Awaiting deployment'}</strong><small>Unique project deployment</small></article>
@@ -370,7 +370,7 @@ export default function App() {
                 )}
               </div>
               <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-color)', padding: '24px', borderRadius: '12px' }}>
-                <h3>Preprod Faucet</h3>
+                <h3>Preview Faucet</h3>
                 <button onClick={requestFaucet} disabled={!walletConnected || faucetLoading}>
                   {faucetLoading ? "Requesting..." : "Mint Faucet Tokens"}
                 </button>

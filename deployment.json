@@ -1,8 +1,7 @@
 {
-  "network": "preprod",
-  "contract": "degree",
-  "contractAddress": "73354cd49f7195d6de3905c85d31d41a05610b5be9e7fa6d3ac40c9483d6202d",
-  "transactionHash": "d83f10008cef94ebe27f1a793b4d2600f6c59d44a1951637ca08d39f2283fad4",
-  "transactionId": 498532,
-  "verifiedBy": "Midnight Preprod indexer"
+  "contractAddress": "9f6508250c46bccc23195165da276b4d4136c734144280a49cf9087c31bbb35c",
+  "network": "preview",
+  "deployedAt": "2026-08-03T18:50:32.214Z",
+  "deployer": "mn_addr_preview12eq24yq2c3w2flhnvszgtkzhvuhptlggnm5y0yzmg8rm35fk9htqxutkpv",
+  "transactionHash": "0079b721fc3cb172722acb890c676741838f1f1db43c24b5c7707b90c6086661ca"
 }
