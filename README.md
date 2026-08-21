@@ -74,3 +74,7 @@ Demo video: [view the registrar console](https://drive.google.com/file/d/1rl1urj
 ## Verification
 
 Privacy is the product feature: the verifier receives only the required degree-policy result, while the student transcript and credential values remain private. Run `npm test`, `npm run compile`, and `npm run build`; the five contract scenarios are documented in [TESTING.md](./TESTING.md), the product scope is in [PROPOSAL.md](./PROPOSAL.md), and both CI workflows run on every push and pull request.
+
+## Registrar assurance
+
+Before operating Academic Credential Attestation, read the independent [security model](SECURITY.md) and [operations runbook](OPERATIONS.md). Runtime configuration is fail-closed and its executable checks live in [src/test/runtime-config.test.ts](src/test/runtime-config.test.ts).
