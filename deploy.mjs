@@ -176,6 +176,7 @@ async function deploy() {
   console.log(`Network: ${NETWORK_ID}`);
 
   fs.writeFileSync('deployment.json', JSON.stringify({
+    contractName: 'degree',
     contractAddress,
     network: NETWORK_ID,
     deployedAt: new Date().toISOString(),
