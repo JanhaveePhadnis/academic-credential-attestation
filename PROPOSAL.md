@@ -1,5 +1,9 @@
 # Product Proposal: Academic Credential Attestation
 
+**Submission category:** Identity/credentials  
+**Registrar/owner:** `JanhaveePhadnis`  
+**Proof status:** Deployed and independently testable
+
 ## Problem
 
 Hiring and admissions workflows often request an entire transcript when they only need a narrow credential fact.
@@ -25,4 +29,3 @@ University registration and proof outcome can be inspected. Student identity, ex
 - Valid credentials pass.
 - Subject mismatches fail.
 - Unaccredited signatures fail.
-

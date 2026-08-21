@@ -4,6 +4,13 @@
 
 A registrar-facing proof desk for confirming education and GPA policy without distributing a student transcript.
 
+## Registrar’s review path
+
+1. Read the credential design in [PROPOSAL.md](./PROPOSAL.md).
+2. Audit the issuer and rejection cases in [degree.test.ts](./src/test/degree.test.ts).
+3. Follow [TESTING.md](./TESTING.md) to reproduce results.
+4. Confirm the Preview instance in [deployment.json](./deployment.json).
+
 ## The registrar workflow
 
 Academic Credential Attestation models a narrow verification exchange:
