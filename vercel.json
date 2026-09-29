@@ -1,6 +1,6 @@
 {
   "cleanUrls": true,
-  "alias": "janve-11y0.vercel.app",
+  "alias": "credential-folio.vercel.app",
   "buildCommand": "npm run build",
   "outputDirectory": "dist"
 }
