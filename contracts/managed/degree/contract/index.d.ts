@@ -3,41 +3,41 @@ import type * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
 export type Witnesses<PS> = {
   localSecretKey(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, Uint8Array];
   degreeSubject(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, Uint8Array];
-  universitySignature(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, Uint8Array];
+  credentialSalt(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, Uint8Array];
 }
 
 export type ImpureCircuits<PS> = {
-  registerUniversity(context: __compactRuntime.CircuitContext<PS>,
-                     uni_pk_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+  issueCredential(context: __compactRuntime.CircuitContext<PS>,
+                  commitment_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
   verifyDegree(context: __compactRuntime.CircuitContext<PS>,
                required_subject_0: Uint8Array): __compactRuntime.CircuitResults<PS, boolean>;
 }
 
 export type ProvableCircuits<PS> = {
-  registerUniversity(context: __compactRuntime.CircuitContext<PS>,
-                     uni_pk_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+  issueCredential(context: __compactRuntime.CircuitContext<PS>,
+                  commitment_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
   verifyDegree(context: __compactRuntime.CircuitContext<PS>,
                required_subject_0: Uint8Array): __compactRuntime.CircuitResults<PS, boolean>;
 }
 
 export type PureCircuits = {
-  verifyCredential(subj_0: Uint8Array, sig_0: Uint8Array): Uint8Array;
+  credentialCommitment(subject_0: Uint8Array, salt_0: Uint8Array): Uint8Array;
   publicKey(sk_0: Uint8Array): Uint8Array;
 }
 
 export type Circuits<PS> = {
-  registerUniversity(context: __compactRuntime.CircuitContext<PS>,
-                     uni_pk_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+  issueCredential(context: __compactRuntime.CircuitContext<PS>,
+                  commitment_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
   verifyDegree(context: __compactRuntime.CircuitContext<PS>,
                required_subject_0: Uint8Array): __compactRuntime.CircuitResults<PS, boolean>;
-  verifyCredential(context: __compactRuntime.CircuitContext<PS>,
-                   subj_0: Uint8Array,
-                   sig_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  credentialCommitment(context: __compactRuntime.CircuitContext<PS>,
+                       subject_0: Uint8Array,
+                       salt_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   publicKey(context: __compactRuntime.CircuitContext<PS>, sk_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
 }
 
 export type Ledger = {
-  accredited_universities: {
+  issued_credentials: {
     isEmpty(): boolean;
     size(): bigint;
     member(key_0: Uint8Array): boolean;

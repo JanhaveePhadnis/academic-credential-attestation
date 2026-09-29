@@ -2,7 +2,7 @@ pragma language_version >= 0.22;
 
 import CompactStandardLibrary;
 
-export ledger accredited_universities: Map<Bytes<32>, Boolean>;
+export ledger issued_credentials: Map<Bytes<32>, Boolean>;
 export ledger admin: Bytes<32>;
 
 constructor(admin_pk: Bytes<32>) {
@@ -11,27 +11,27 @@ constructor(admin_pk: Bytes<32>) {
 
 witness localSecretKey(): Bytes<32>;
 witness degreeSubject(): Bytes<32>;
-witness universitySignature(): Bytes<32>;
+witness credentialSalt(): Bytes<32>;
 
-export circuit registerUniversity(uni_pk: Bytes<32>): [] {
-  assert(disclose(publicKey(localSecretKey())) == admin, "Only admin can register universities");
-  accredited_universities.insert(disclose(uni_pk), true);
+export circuit issueCredential(commitment: Bytes<32>): [] {
+  assert(disclose(publicKey(localSecretKey())) == admin, "Only admin can issue academic credentials");
+  issued_credentials.insert(disclose(commitment), true);
 }
 
 export circuit verifyDegree(required_subject: Bytes<32>): Boolean {
-  // Verify university signature is accredited
-  const uni_pk = verifyCredential(degreeSubject(), universitySignature());
-  assert(accredited_universities.member(disclose(uni_pk)), "Credential not signed by accredited university");
-
-  // Assert subject matches requirement
+  const commitment = credentialCommitment(degreeSubject(), credentialSalt());
+  assert(issued_credentials.member(disclose(commitment)), "Credential was not issued by the registrar");
   assert(degreeSubject() == required_subject, "User's degree subject does not match requirement");
   
   return disclose(true);
 }
 
-export circuit verifyCredential(subj: Bytes<32>, sig: Bytes<32>): Bytes<32> {
-  // In a real application, this checks a cryptographic signature on the tuple (student_pk, subj)
-  return sig;
+export circuit credentialCommitment(subject: Bytes<32>, salt: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<3, Bytes<32>>>([
+    pad(32, "degree:credential:"),
+    subject,
+    salt
+  ]);
 }
 
 export circuit publicKey(sk: Bytes<32>): Bytes<32> {

@@ -5,9 +5,11 @@ const _descriptor_0 = new __compactRuntime.CompactTypeBytes(32);
 
 const _descriptor_1 = __compactRuntime.CompactTypeBoolean;
 
-const _descriptor_2 = new __compactRuntime.CompactTypeVector(2, _descriptor_0);
+const _descriptor_2 = new __compactRuntime.CompactTypeVector(3, _descriptor_0);
 
-const _descriptor_3 = new __compactRuntime.CompactTypeUnsignedInteger(18446744073709551615n, 8);
+const _descriptor_3 = new __compactRuntime.CompactTypeVector(2, _descriptor_0);
+
+const _descriptor_4 = new __compactRuntime.CompactTypeUnsignedInteger(18446744073709551615n, 8);
 
 class _Either_0 {
   alignment() {
@@ -25,9 +27,9 @@ class _Either_0 {
   }
 }
 
-const _descriptor_4 = new _Either_0();
+const _descriptor_5 = new _Either_0();
 
-const _descriptor_5 = new __compactRuntime.CompactTypeUnsignedInteger(340282366920938463463374607431768211455n, 16);
+const _descriptor_6 = new __compactRuntime.CompactTypeUnsignedInteger(340282366920938463463374607431768211455n, 16);
 
 class _ContractAddress_0 {
   alignment() {
@@ -43,9 +45,9 @@ class _ContractAddress_0 {
   }
 }
 
-const _descriptor_6 = new _ContractAddress_0();
+const _descriptor_7 = new _ContractAddress_0();
 
-const _descriptor_7 = new __compactRuntime.CompactTypeUnsignedInteger(255n, 1);
+const _descriptor_8 = new __compactRuntime.CompactTypeUnsignedInteger(255n, 1);
 
 export class Contract {
   witnesses;
@@ -63,44 +65,44 @@ export class Contract {
     if (typeof(witnesses_0.degreeSubject) !== 'function') {
       throw new __compactRuntime.CompactError('first (witnesses) argument to Contract constructor does not contain a function-valued field named degreeSubject');
     }
-    if (typeof(witnesses_0.universitySignature) !== 'function') {
-      throw new __compactRuntime.CompactError('first (witnesses) argument to Contract constructor does not contain a function-valued field named universitySignature');
+    if (typeof(witnesses_0.credentialSalt) !== 'function') {
+      throw new __compactRuntime.CompactError('first (witnesses) argument to Contract constructor does not contain a function-valued field named credentialSalt');
     }
     this.witnesses = witnesses_0;
     this.circuits = {
-      registerUniversity: (...args_1) => {
+      issueCredential: (...args_1) => {
         if (args_1.length !== 2) {
-          throw new __compactRuntime.CompactError(`registerUniversity: expected 2 arguments (as invoked from Typescript), received ${args_1.length}`);
+          throw new __compactRuntime.CompactError(`issueCredential: expected 2 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
         const contextOrig_0 = args_1[0];
-        const uni_pk_0 = args_1[1];
+        const commitment_0 = args_1[1];
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
-          __compactRuntime.typeError('registerUniversity',
+          __compactRuntime.typeError('issueCredential',
                                      'argument 1 (as invoked from Typescript)',
                                      'degree.compact line 16 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
-        if (!(uni_pk_0.buffer instanceof ArrayBuffer && uni_pk_0.BYTES_PER_ELEMENT === 1 && uni_pk_0.length === 32)) {
-          __compactRuntime.typeError('registerUniversity',
+        if (!(commitment_0.buffer instanceof ArrayBuffer && commitment_0.BYTES_PER_ELEMENT === 1 && commitment_0.length === 32)) {
+          __compactRuntime.typeError('issueCredential',
                                      'argument 1 (argument 2 as invoked from Typescript)',
                                      'degree.compact line 16 char 1',
                                      'Bytes<32>',
-                                     uni_pk_0)
+                                     commitment_0)
         }
         const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost() };
         const partialProofData = {
           input: {
-            value: _descriptor_0.toValue(uni_pk_0),
+            value: _descriptor_0.toValue(commitment_0),
             alignment: _descriptor_0.alignment()
           },
           output: undefined,
           publicTranscript: [],
           privateTranscriptOutputs: []
         };
-        const result_0 = this._registerUniversity_0(context,
-                                                    partialProofData,
-                                                    uni_pk_0);
+        const result_0 = this._issueCredential_0(context,
+                                                 partialProofData,
+                                                 commitment_0);
         partialProofData.output = { value: [], alignment: [] };
         return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
       },
@@ -140,19 +142,19 @@ export class Contract {
         partialProofData.output = { value: _descriptor_1.toValue(result_0), alignment: _descriptor_1.alignment() };
         return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
       },
-      verifyCredential(context, ...args_1) {
-        return { result: pureCircuits.verifyCredential(...args_1), context };
+      credentialCommitment(context, ...args_1) {
+        return { result: pureCircuits.credentialCommitment(...args_1), context };
       },
       publicKey(context, ...args_1) {
         return { result: pureCircuits.publicKey(...args_1), context };
       }
     };
     this.impureCircuits = {
-      registerUniversity: this.circuits.registerUniversity,
+      issueCredential: this.circuits.issueCredential,
       verifyDegree: this.circuits.verifyDegree
     };
     this.provableCircuits = {
-      registerUniversity: this.circuits.registerUniversity,
+      issueCredential: this.circuits.issueCredential,
       verifyDegree: this.circuits.verifyDegree
     };
   }
@@ -186,7 +188,7 @@ export class Contract {
     stateValue_0 = stateValue_0.arrayPush(__compactRuntime.StateValue.newNull());
     stateValue_0 = stateValue_0.arrayPush(__compactRuntime.StateValue.newNull());
     state_0.data = new __compactRuntime.ChargedState(stateValue_0);
-    state_0.setOperation('registerUniversity', new __compactRuntime.ContractOperation());
+    state_0.setOperation('issueCredential', new __compactRuntime.ContractOperation());
     state_0.setOperation('verifyDegree', new __compactRuntime.ContractOperation());
     const context = __compactRuntime.createCircuitContext(__compactRuntime.dummyContractAddress(), constructorContext_0.initialZswapLocalState.coinPublicKey, state_0.data, constructorContext_0.initialPrivateState);
     const partialProofData = {
@@ -199,8 +201,8 @@ export class Contract {
                                       partialProofData,
                                       [
                                        { push: { storage: false,
-                                                 value: __compactRuntime.StateValue.newCell({ value: _descriptor_7.toValue(0n),
-                                                                                              alignment: _descriptor_7.alignment() }).encode() } },
+                                                 value: __compactRuntime.StateValue.newCell({ value: _descriptor_8.toValue(0n),
+                                                                                              alignment: _descriptor_8.alignment() }).encode() } },
                                        { push: { storage: true,
                                                  value: __compactRuntime.StateValue.newMap(
                                                           new __compactRuntime.StateMap()
@@ -210,8 +212,8 @@ export class Contract {
                                       partialProofData,
                                       [
                                        { push: { storage: false,
-                                                 value: __compactRuntime.StateValue.newCell({ value: _descriptor_7.toValue(1n),
-                                                                                              alignment: _descriptor_7.alignment() }).encode() } },
+                                                 value: __compactRuntime.StateValue.newCell({ value: _descriptor_8.toValue(1n),
+                                                                                              alignment: _descriptor_8.alignment() }).encode() } },
                                        { push: { storage: true,
                                                  value: __compactRuntime.StateValue.newCell({ value: _descriptor_0.toValue(new Uint8Array(32)),
                                                                                               alignment: _descriptor_0.alignment() }).encode() } },
@@ -220,8 +222,8 @@ export class Contract {
                                       partialProofData,
                                       [
                                        { push: { storage: false,
-                                                 value: __compactRuntime.StateValue.newCell({ value: _descriptor_7.toValue(1n),
-                                                                                              alignment: _descriptor_7.alignment() }).encode() } },
+                                                 value: __compactRuntime.StateValue.newCell({ value: _descriptor_8.toValue(1n),
+                                                                                              alignment: _descriptor_8.alignment() }).encode() } },
                                        { push: { storage: true,
                                                  value: __compactRuntime.StateValue.newCell({ value: _descriptor_0.toValue(admin_pk_0),
                                                                                               alignment: _descriptor_0.alignment() }).encode() } },
@@ -235,6 +237,10 @@ export class Contract {
   }
   _persistentHash_0(value_0) {
     const result_0 = __compactRuntime.persistentHash(_descriptor_2, value_0);
+    return result_0;
+  }
+  _persistentHash_1(value_0) {
+    const result_0 = __compactRuntime.persistentHash(_descriptor_3, value_0);
     return result_0;
   }
   _localSecretKey_0(context, partialProofData) {
@@ -271,12 +277,12 @@ export class Contract {
     });
     return result_0;
   }
-  _universitySignature_0(context, partialProofData) {
+  _credentialSalt_0(context, partialProofData) {
     const witnessContext_0 = __compactRuntime.createWitnessContext(ledger(context.currentQueryContext.state), context.currentPrivateState, context.currentQueryContext.address);
-    const [nextPrivateState_0, result_0] = this.witnesses.universitySignature(witnessContext_0);
+    const [nextPrivateState_0, result_0] = this.witnesses.credentialSalt(witnessContext_0);
     context.currentPrivateState = nextPrivateState_0;
     if (!(result_0.buffer instanceof ArrayBuffer && result_0.BYTES_PER_ELEMENT === 1 && result_0.length === 32)) {
-      __compactRuntime.typeError('universitySignature',
+      __compactRuntime.typeError('credentialSalt',
                                  'return value',
                                  'degree.compact line 14 char 1',
                                  'Bytes<32>',
@@ -288,7 +294,7 @@ export class Contract {
     });
     return result_0;
   }
-  _registerUniversity_0(context, partialProofData, uni_pk_0) {
+  _issueCredential_0(context, partialProofData, commitment_0) {
     __compactRuntime.assert(this._equal_0(this._publicKey_0(this._localSecretKey_0(context,
                                                                                    partialProofData)),
                                           _descriptor_0.fromValue(__compactRuntime.queryLedgerState(context,
@@ -299,11 +305,11 @@ export class Contract {
                                                                                                               pushPath: false,
                                                                                                               path: [
                                                                                                                      { tag: 'value',
-                                                                                                                       value: { value: _descriptor_7.toValue(1n),
-                                                                                                                                alignment: _descriptor_7.alignment() } }] } },
+                                                                                                                       value: { value: _descriptor_8.toValue(1n),
+                                                                                                                                alignment: _descriptor_8.alignment() } }] } },
                                                                                                      { popeq: { cached: false,
                                                                                                                 result: undefined } }]).value)),
-                            'Only admin can register universities');
+                            'Only admin can issue academic credentials');
     __compactRuntime.queryLedgerState(context,
                                       partialProofData,
                                       [
@@ -311,10 +317,10 @@ export class Contract {
                                                 pushPath: true,
                                                 path: [
                                                        { tag: 'value',
-                                                         value: { value: _descriptor_7.toValue(0n),
-                                                                  alignment: _descriptor_7.alignment() } }] } },
+                                                         value: { value: _descriptor_8.toValue(0n),
+                                                                  alignment: _descriptor_8.alignment() } }] } },
                                        { push: { storage: false,
-                                                 value: __compactRuntime.StateValue.newCell({ value: _descriptor_0.toValue(uni_pk_0),
+                                                 value: __compactRuntime.StateValue.newCell({ value: _descriptor_0.toValue(commitment_0),
                                                                                               alignment: _descriptor_0.alignment() }).encode() } },
                                        { push: { storage: true,
                                                  value: __compactRuntime.StateValue.newCell({ value: _descriptor_1.toValue(true),
@@ -324,10 +330,10 @@ export class Contract {
     return [];
   }
   _verifyDegree_0(context, partialProofData, required_subject_0) {
-    const uni_pk_0 = this._verifyCredential_0(this._degreeSubject_0(context,
-                                                                    partialProofData),
-                                              this._universitySignature_0(context,
-                                                                          partialProofData));
+    const commitment_0 = this._credentialCommitment_0(this._degreeSubject_0(context,
+                                                                            partialProofData),
+                                                      this._credentialSalt_0(context,
+                                                                             partialProofData));
     __compactRuntime.assert(_descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
                                                                                       partialProofData,
                                                                                       [
@@ -336,24 +342,28 @@ export class Contract {
                                                                                                 pushPath: false,
                                                                                                 path: [
                                                                                                        { tag: 'value',
-                                                                                                         value: { value: _descriptor_7.toValue(0n),
-                                                                                                                  alignment: _descriptor_7.alignment() } }] } },
+                                                                                                         value: { value: _descriptor_8.toValue(0n),
+                                                                                                                  alignment: _descriptor_8.alignment() } }] } },
                                                                                        { push: { storage: false,
-                                                                                                 value: __compactRuntime.StateValue.newCell({ value: _descriptor_0.toValue(uni_pk_0),
+                                                                                                 value: __compactRuntime.StateValue.newCell({ value: _descriptor_0.toValue(commitment_0),
                                                                                                                                               alignment: _descriptor_0.alignment() }).encode() } },
                                                                                        'member',
                                                                                        { popeq: { cached: true,
                                                                                                   result: undefined } }]).value),
-                            'Credential not signed by accredited university');
+                            'Credential was not issued by the registrar');
     __compactRuntime.assert(this._equal_1(this._degreeSubject_0(context,
                                                                 partialProofData),
                                           required_subject_0),
                             "User's degree subject does not match requirement");
     return true;
   }
-  _verifyCredential_0(subj_0, sig_0) { return sig_0; }
+  _credentialCommitment_0(subject_0, salt_0) {
+    return this._persistentHash_0([new Uint8Array([100, 101, 103, 114, 101, 101, 58, 99, 114, 101, 100, 101, 110, 116, 105, 97, 108, 58, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+                                   subject_0,
+                                   salt_0]);
+  }
   _publicKey_0(sk_0) {
-    return this._persistentHash_0([new Uint8Array([100, 101, 103, 114, 101, 101, 58, 112, 107, 58, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+    return this._persistentHash_1([new Uint8Array([100, 101, 103, 114, 101, 101, 58, 112, 107, 58, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
                                    sk_0]);
   }
   _equal_0(x0, y0) {
@@ -379,7 +389,7 @@ export function ledger(stateOrChargedState) {
     privateTranscriptOutputs: []
   };
   return {
-    accredited_universities: {
+    issued_credentials: {
       isEmpty(...args_0) {
         if (args_0.length !== 0) {
           throw new __compactRuntime.CompactError(`isEmpty: expected 0 arguments, received ${args_0.length}`);
@@ -392,12 +402,12 @@ export function ledger(stateOrChargedState) {
                                                                                    pushPath: false,
                                                                                    path: [
                                                                                           { tag: 'value',
-                                                                                            value: { value: _descriptor_7.toValue(0n),
-                                                                                                     alignment: _descriptor_7.alignment() } }] } },
+                                                                                            value: { value: _descriptor_8.toValue(0n),
+                                                                                                     alignment: _descriptor_8.alignment() } }] } },
                                                                           'size',
                                                                           { push: { storage: false,
-                                                                                    value: __compactRuntime.StateValue.newCell({ value: _descriptor_3.toValue(0n),
-                                                                                                                                 alignment: _descriptor_3.alignment() }).encode() } },
+                                                                                    value: __compactRuntime.StateValue.newCell({ value: _descriptor_4.toValue(0n),
+                                                                                                                                 alignment: _descriptor_4.alignment() }).encode() } },
                                                                           'eq',
                                                                           { popeq: { cached: true,
                                                                                      result: undefined } }]).value);
@@ -406,7 +416,7 @@ export function ledger(stateOrChargedState) {
         if (args_0.length !== 0) {
           throw new __compactRuntime.CompactError(`size: expected 0 arguments, received ${args_0.length}`);
         }
-        return _descriptor_3.fromValue(__compactRuntime.queryLedgerState(context,
+        return _descriptor_4.fromValue(__compactRuntime.queryLedgerState(context,
                                                                          partialProofData,
                                                                          [
                                                                           { dup: { n: 0 } },
@@ -414,8 +424,8 @@ export function ledger(stateOrChargedState) {
                                                                                    pushPath: false,
                                                                                    path: [
                                                                                           { tag: 'value',
-                                                                                            value: { value: _descriptor_7.toValue(0n),
-                                                                                                     alignment: _descriptor_7.alignment() } }] } },
+                                                                                            value: { value: _descriptor_8.toValue(0n),
+                                                                                                     alignment: _descriptor_8.alignment() } }] } },
                                                                           'size',
                                                                           { popeq: { cached: true,
                                                                                      result: undefined } }]).value);
@@ -440,8 +450,8 @@ export function ledger(stateOrChargedState) {
                                                                                    pushPath: false,
                                                                                    path: [
                                                                                           { tag: 'value',
-                                                                                            value: { value: _descriptor_7.toValue(0n),
-                                                                                                     alignment: _descriptor_7.alignment() } }] } },
+                                                                                            value: { value: _descriptor_8.toValue(0n),
+                                                                                                     alignment: _descriptor_8.alignment() } }] } },
                                                                           { push: { storage: false,
                                                                                     value: __compactRuntime.StateValue.newCell({ value: _descriptor_0.toValue(key_0),
                                                                                                                                  alignment: _descriptor_0.alignment() }).encode() } },
@@ -469,8 +479,8 @@ export function ledger(stateOrChargedState) {
                                                                                    pushPath: false,
                                                                                    path: [
                                                                                           { tag: 'value',
-                                                                                            value: { value: _descriptor_7.toValue(0n),
-                                                                                                     alignment: _descriptor_7.alignment() } }] } },
+                                                                                            value: { value: _descriptor_8.toValue(0n),
+                                                                                                     alignment: _descriptor_8.alignment() } }] } },
                                                                           { idx: { cached: false,
                                                                                    pushPath: false,
                                                                                    path: [
@@ -497,8 +507,8 @@ export function ledger(stateOrChargedState) {
                                                                                  pushPath: false,
                                                                                  path: [
                                                                                         { tag: 'value',
-                                                                                          value: { value: _descriptor_7.toValue(1n),
-                                                                                                   alignment: _descriptor_7.alignment() } }] } },
+                                                                                          value: { value: _descriptor_8.toValue(1n),
+                                                                                                   alignment: _descriptor_8.alignment() } }] } },
                                                                         { popeq: { cached: false,
                                                                                    result: undefined } }]).value);
     }
@@ -510,30 +520,30 @@ const _emptyContext = {
 const _dummyContract = new Contract({
   localSecretKey: (...args) => undefined,
   degreeSubject: (...args) => undefined,
-  universitySignature: (...args) => undefined
+  credentialSalt: (...args) => undefined
 });
 export const pureCircuits = {
-  verifyCredential: (...args_0) => {
+  credentialCommitment: (...args_0) => {
     if (args_0.length !== 2) {
-      throw new __compactRuntime.CompactError(`verifyCredential: expected 2 arguments (as invoked from Typescript), received ${args_0.length}`);
+      throw new __compactRuntime.CompactError(`credentialCommitment: expected 2 arguments (as invoked from Typescript), received ${args_0.length}`);
     }
-    const subj_0 = args_0[0];
-    const sig_0 = args_0[1];
-    if (!(subj_0.buffer instanceof ArrayBuffer && subj_0.BYTES_PER_ELEMENT === 1 && subj_0.length === 32)) {
-      __compactRuntime.typeError('verifyCredential',
+    const subject_0 = args_0[0];
+    const salt_0 = args_0[1];
+    if (!(subject_0.buffer instanceof ArrayBuffer && subject_0.BYTES_PER_ELEMENT === 1 && subject_0.length === 32)) {
+      __compactRuntime.typeError('credentialCommitment',
                                  'argument 1',
-                                 'degree.compact line 32 char 1',
+                                 'degree.compact line 29 char 1',
                                  'Bytes<32>',
-                                 subj_0)
+                                 subject_0)
     }
-    if (!(sig_0.buffer instanceof ArrayBuffer && sig_0.BYTES_PER_ELEMENT === 1 && sig_0.length === 32)) {
-      __compactRuntime.typeError('verifyCredential',
+    if (!(salt_0.buffer instanceof ArrayBuffer && salt_0.BYTES_PER_ELEMENT === 1 && salt_0.length === 32)) {
+      __compactRuntime.typeError('credentialCommitment',
                                  'argument 2',
-                                 'degree.compact line 32 char 1',
+                                 'degree.compact line 29 char 1',
                                  'Bytes<32>',
-                                 sig_0)
+                                 salt_0)
     }
-    return _dummyContract._verifyCredential_0(subj_0, sig_0);
+    return _dummyContract._credentialCommitment_0(subject_0, salt_0);
   },
   publicKey: (...args_0) => {
     if (args_0.length !== 1) {

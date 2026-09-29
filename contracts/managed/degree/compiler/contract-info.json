@@ -4,12 +4,12 @@
   "runtime-version": "0.15.0",
   "circuits": [
     {
-      "name": "registerUniversity",
+      "name": "issueCredential",
       "pure": false,
       "proof": true,
       "arguments": [
         {
-          "name": "uni_pk",
+          "name": "commitment",
           "type": {
             "type-name": "Bytes",
             "length": 32
@@ -40,19 +40,19 @@
       }
     },
     {
-      "name": "verifyCredential",
+      "name": "credentialCommitment",
       "pure": true,
       "proof": false,
       "arguments": [
         {
-          "name": "subj",
+          "name": "subject",
           "type": {
             "type-name": "Bytes",
             "length": 32
           }
         },
         {
-          "name": "sig",
+          "name": "salt",
           "type": {
             "type-name": "Bytes",
             "length": 32
@@ -103,7 +103,7 @@
       }
     },
     {
-      "name": "universitySignature",
+      "name": "credentialSalt",
       "arguments": [
       ],
       "result type": {

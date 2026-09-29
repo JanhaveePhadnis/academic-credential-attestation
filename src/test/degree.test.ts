@@ -1,84 +1,57 @@
 import { DegreeSimulator } from "./degree-simulator.js";
 import { setNetworkId } from "@midnight-ntwrk/midnight-js-network-id";
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { randomBytes } from "./utils.js";
 
 setNetworkId("undeployed");
 
-describe("Confidential Credentials Smart Contract Tests", () => {
+describe("Academic credential commitment contract", () => {
   const adminSecret = randomBytes(32);
-  const dummySubject = randomBytes(32);
-
-  // Setup helper to create a simulator
-  const setupSimulator = (userSecret: Uint8Array, degreeSubject: Uint8Array, universitySignature: Uint8Array) => {
-    const tempSim = new DegreeSimulator(adminSecret, new Uint8Array(32), new Uint8Array(32), new Uint8Array(32));
-    const adminPk = tempSim.publicKey(adminSecret);
-    return new DegreeSimulator(userSecret, degreeSubject, universitySignature, adminPk);
+  const setup = (subject: Uint8Array, salt: Uint8Array) => {
+    const bootstrap = new DegreeSimulator(adminSecret, new Uint8Array(32), new Uint8Array(32), new Uint8Array(32));
+    return new DegreeSimulator(randomBytes(32), subject, salt, bootstrap.publicKey(adminSecret));
   };
 
-  it("1. Properly initializes contract parameters and admin public key", () => {
-    const userSecret = randomBytes(32);
-    const simulator = setupSimulator(userSecret, dummySubject, new Uint8Array(32));
-    const ledgerState = simulator.getLedger();
-
-    const tempSim = new DegreeSimulator(adminSecret, new Uint8Array(32), new Uint8Array(32), new Uint8Array(32));
-    const adminPk = tempSim.publicKey(adminSecret);
-    expect(ledgerState.admin).toEqual(adminPk);
+  it("anchors the administrator commitment", () => {
+    const bootstrap = new DegreeSimulator(adminSecret, new Uint8Array(32), new Uint8Array(32), new Uint8Array(32));
+    expect(setup(randomBytes(32), randomBytes(32)).getLedger().admin).toEqual(bootstrap.publicKey(adminSecret));
   });
 
-  it("2. Lets admin register an accredited university", () => {
-    const userSecret = randomBytes(32);
-    const simulator = setupSimulator(userSecret, dummySubject, new Uint8Array(32));
-    const uniPk = randomBytes(32);
-
-    // Switch to admin to register
-    simulator.switchUser(adminSecret, new Uint8Array(32), new Uint8Array(32));
-    const ledgerState = simulator.registerUniversity(uniPk);
-    expect(ledgerState.accredited_universities.member(uniPk)).toEqual(true);
-  });
-
-  it("3. Returns true when user possesses a valid degree signed by an accredited university", () => {
-    const userSecret = randomBytes(32);
-    const uniPk = randomBytes(32);
+  it("allows only the registrar administrator to issue credentials", () => {
     const subject = randomBytes(32);
-
-    const simulator = setupSimulator(userSecret, subject, uniPk);
-
-    // Register university
-    simulator.switchUser(adminSecret, new Uint8Array(32), new Uint8Array(32));
-    simulator.registerUniversity(uniPk);
-
-    // Switch to user and verify
-    simulator.switchUser(userSecret, subject, uniPk);
-    const isValid = simulator.verifyDegree(subject);
-    expect(isValid).toEqual(true);
+    const salt = randomBytes(32);
+    const sim = setup(subject, salt);
+    const commitment = sim.credentialCommitment(subject, salt);
+    expect(() => sim.issueCredential(commitment)).toThrow(/Only admin/);
+    sim.switchUser(adminSecret, new Uint8Array(32), new Uint8Array(32));
+    expect(sim.issueCredential(commitment).issued_credentials.member(commitment)).toBe(true);
   });
 
-  it("4. Throws when the degree subject does not match the required subject", () => {
-    const userSecret = randomBytes(32);
-    const uniPk = randomBytes(32);
-    const actualSubject = randomBytes(32);
-    const requestedSubject = randomBytes(32);
-
-    const simulator = setupSimulator(userSecret, actualSubject, uniPk);
-
-    // Register university
-    simulator.switchUser(adminSecret, new Uint8Array(32), new Uint8Array(32));
-    simulator.registerUniversity(uniPk);
-
-    // Verify
-    simulator.switchUser(userSecret, actualSubject, uniPk);
-    expect(() => simulator.verifyDegree(requestedSubject)).toThrow("failed assert: User's degree subject does not match requirement");
-  });
-
-  it("5. Throws when the university signature is not from an accredited university", () => {
-    const userSecret = randomBytes(32);
-    const unaccreditedUniPk = randomBytes(32);
+  it("verifies an issued subject without disclosing its salt", () => {
     const subject = randomBytes(32);
+    const salt = randomBytes(32);
+    const sim = setup(subject, salt);
+    const commitment = sim.credentialCommitment(subject, salt);
+    sim.switchUser(adminSecret, new Uint8Array(32), new Uint8Array(32));
+    sim.issueCredential(commitment);
+    sim.switchUser(randomBytes(32), subject, salt);
+    expect(sim.verifyDegree(subject)).toBe(true);
+  });
 
-    const simulator = setupSimulator(userSecret, subject, unaccreditedUniPk);
+  it("rejects a different required subject", () => {
+    const subject = randomBytes(32);
+    const salt = randomBytes(32);
+    const sim = setup(subject, salt);
+    const commitment = sim.credentialCommitment(subject, salt);
+    sim.switchUser(adminSecret, new Uint8Array(32), new Uint8Array(32));
+    sim.issueCredential(commitment);
+    sim.switchUser(randomBytes(32), subject, salt);
+    expect(() => sim.verifyDegree(randomBytes(32))).toThrow(/does not match/);
+  });
 
-    // Verify (without registering unaccreditedUniPk)
-    expect(() => simulator.verifyDegree(subject)).toThrow("failed assert: Credential not signed by accredited university");
+  it("rejects unissued commitments", () => {
+    const subject = randomBytes(32);
+    const sim = setup(subject, randomBytes(32));
+    expect(() => sim.verifyDegree(subject)).toThrow(/not issued/);
   });
 });
