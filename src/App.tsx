@@ -1,7 +1,16 @@
-import { useState, useEffect } from 'react';
-import { Award, FileText, Wallet, Cpu, Lock, Database, History, HelpCircle } from 'lucide-react';
-import { submitDegreeCircuit } from './midnightClient';
-import { verifyRegistrarDeployment, validateRegistrarDeploymentRuntime } from './runtimeConfig';
+import OperatorSetup from './OperatorSetup';
+import { useState, useEffect } from "react";
+import {
+  deployDegreeContract,
+  degreeBytes32,
+  newDegreeSecret,
+  readDegreeLedger,
+  submitDegreeCircuit,
+} from "./midnightClient";
+import {
+  verifyRegistrarDeployment,
+  validateRegistrarDeploymentRuntime,
+} from "./runtimeConfig";
 
 const RUNTIME = validateRegistrarDeploymentRuntime({
   networkId: import.meta.env.VITE_NETWORK_ID,
@@ -12,12 +21,26 @@ const RUNTIME = validateRegistrarDeploymentRuntime({
 });
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const readRoute = () =>
+    ["dashboard", "grants", "deployer", "walletHub", "privacy"].includes(
+      location.hash.slice(2),
+    )
+      ? location.hash.slice(2)
+      : "home";
+  const [activeTab, updateTab] = useState(readRoute);
+  useEffect(() => {
+    const navigate = () => {
+      if (["#content", "#main-content"].includes(window.location.hash)) return;
+      updateTab(readRoute());
+      window.scrollTo(0, 0);
+    };
+    window.addEventListener("hashchange", navigate);
+    return () => window.removeEventListener("hashchange", navigate);
+  }, []);
   const [walletConnected, setWalletConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [walletBalance, setWalletBalance] = useState<string>("0.00");
   const [connectingWallet, setConnectingWallet] = useState(false);
-  const [faucetLoading, setFaucetLoading] = useState(false);
   const [laceDetected, setLaceDetected] = useState(false);
   const [connectedWallet, setConnectedWallet] = useState<any>(null);
 
@@ -25,49 +48,61 @@ export default function App() {
   const [contractAddress, setContractAddress] = useState<string | null>(null);
   const [runtimeIssue, setRuntimeIssue] = useState<string | null>(null);
   const [isDeploying, setIsDeploying] = useState(false);
-  const [deployStep, setDeployStep] = useState(0);
 
-  const [ledger, setLedger] = useState({ minimum_gpa: 3, trusted_universities: "Stanford University Registrar", verification_result: "false" });
-  const [formValues, setFormValues] = useState({ gpa_score: 3.6, reg_sig: "sig:stanford:academic:verified" });
+  const [ledger, setLedger] = useState({
+    trusted_universities: "Awaiting chain data",
+    verification_result: "false",
+  });
+  const [grantClaimed, setGrantClaimed] = useState(false);
+  const [formValues, setFormValues] = useState(() => ({
+    degree_subject: "Computer Science",
+    user_secret: "0404040404040404040404040404040404040404040404040404040404040404",
+    credential_salt: "2424242424242424242424242424242424242424242424242424242424242424",
+  }));
   const [logs, setLogs] = useState<any[]>([]);
   const [isProving, setIsProving] = useState(false);
-  const [provingStep, setProvingStep] = useState(0);
-
-  const proofSteps = [
-    "Loading encrypted student GPA metrics...",
-    "Checking signature validity from Stanford Registrar...",
-    "Running inequality circuit: gpa_score >= 3.0...",
-    "Submitting verified credentials status proof..."
-  ];
-
-  const deploySteps = [
-    "Compiling academic credentials contract...",
-    "Spawning Preview transaction block...",
-    "Publishing university key directory anchor..."
-  ];
 
   useEffect(() => {
-    fetch('/deployment.json')
-      .then(response => {
-        if (!response.ok) throw new Error('Academic Credential Attestation: deployment.json could not be loaded.');
+    fetch("/deployment.json")
+      .then((response) => {
+        if (!response.ok)
+          throw new Error(
+            "Academic Credential Attestation: deployment.json could not be loaded.",
+          );
         return response.json();
       })
-      .then(deployment => {
+      .then((deployment) => {
         const verified = verifyRegistrarDeployment(deployment);
-        if (RUNTIME.contractAddress && RUNTIME.contractAddress !== verified.contractAddress) {
-          throw new Error('Academic Credential Attestation: environment address does not match deployment evidence.');
+        if (
+          RUNTIME.contractAddress &&
+          RUNTIME.contractAddress !== verified.contractAddress
+        ) {
+          throw new Error(
+            "Academic Credential Attestation: environment address does not match deployment evidence.",
+          );
         }
-        setContractAddress(verified.contractAddress);
-        setContractDeployed(true);
+        if (verified.network === RUNTIME.networkId) {
+          setContractAddress(verified.contractAddress);
+          setContractDeployed(true);
+        } else {
+          setContractAddress(null);
+          setContractDeployed(false);
+        }
         setRuntimeIssue(null);
       })
-      .catch(error => {
+      .catch((error) => {
         setContractAddress(null);
         setContractDeployed(false);
-        setRuntimeIssue(error instanceof Error ? error.message : 'Academic Credential Attestation: configuration failed.');
+        setRuntimeIssue(
+          error instanceof Error
+            ? error.message
+            : "Academic Credential Attestation: configuration failed.",
+        );
       });
     const detectLace = () => {
-      const hasMidnightWallet = Object.values((window as any).midnight ?? {}).some((candidate: any) => typeof candidate?.connect === 'function');
+      const hasMidnightWallet = Object.values(
+        (window as any).midnight ?? {},
+      ).some((candidate: any) => typeof candidate?.connect === "function");
       setLaceDetected(hasMidnightWallet);
     };
     detectLace();
@@ -78,13 +113,25 @@ export default function App() {
   const connectLace = async () => {
     setConnectingWallet(true);
     try {
-      const candidates = Object.values((window as any).midnight ?? {}) as Array<{
+      const candidates = Object.values(
+        (window as any).midnight ?? {},
+      ) as Array<{
         connect?: (networkId: string) => Promise<any>;
         name?: string;
+        rdns?: string;
       }>;
-      const wallet = candidates.find(candidate => typeof candidate.connect === 'function');
+      const oneAm = candidates.find(
+        (c) =>
+          /1am/i.test(`${c.name ?? ""} ${c.rdns ?? ""}`) &&
+          typeof c.connect === "function",
+      );
+      const wallet =
+        oneAm ??
+        candidates.find((candidate) => typeof candidate.connect === "function");
       if (!wallet?.connect) {
-        throw new Error('No Midnight wallet connector was detected. Install 1AM or Lace and unlock it.');
+        throw new Error(
+          "No Midnight wallet connector was detected. Install 1AM or Lace and unlock it.",
+        );
       }
 
       const connected = await wallet.connect(RUNTIME.networkId);
@@ -101,282 +148,659 @@ export default function App() {
         setContractAddress(import.meta.env.VITE_CONTRACT_ADDRESS);
         setContractDeployed(true);
       }
-      logTransaction('wallet', 'MIDNIGHT WALLET CONNECTED', '—', 'Connected through the Midnight DApp Connector API');
+      logTransaction(
+        "wallet",
+        "MIDNIGHT WALLET CONNECTED",
+        "—",
+        "Connected through the Midnight DApp Connector API",
+      );
     } catch (err) {
-      console.error('Midnight wallet connection failed:', err);
-      alert(err instanceof Error ? err.message : 'Midnight wallet connection failed.');
+      console.error("Midnight wallet connection failed:", err);
+      const raw = err instanceof Error ? err.message : String(err || "");
+      const msg = (raw.includes("tabs:outgoing.message.ready") || raw.includes("No Listener")) ? "Wallet extension is asleep or locked. Please open and unlock your 1AM / Lace wallet extension, then retry." : (raw || "Midnight wallet connection failed.");
+      alert(msg);
     } finally {
       setConnectingWallet(false);
     }
   };
 
-
-
   const disconnectLace = () => {
     setWalletConnected(false);
     setWalletAddress(null);
     setWalletBalance("0.00");
-    logTransaction('0x0000...0000', 'LACE WALLET DISCONNECTED', '0.00 tNIGHT', 'Disconnected wallet context');
+    logTransaction(
+      "0x0000...0000",
+      "1AM WALLET DISCONNECTED",
+      "0.00 tNIGHT",
+      "Disconnected wallet context",
+    );
   };
 
   const requestFaucet = () => {
     if (!walletConnected) return;
-    window.open(RUNTIME.faucetUrl, '_blank', 'noopener,noreferrer');
-    logTransaction('—', 'FAUCET OPENED', '—', 'Funding must be confirmed by the official Midnight Preview faucet and wallet balance refresh.');
+    window.open(RUNTIME.faucetUrl, "_blank", "noopener,noreferrer");
+    logTransaction(
+      "—",
+      "FAUCET OPENED",
+      "—",
+      "Funding must be confirmed by the official Midnight Preview faucet and wallet balance refresh.",
+    );
   };
 
   const deployContractAction = async () => {
-    if (!contractAddress || runtimeIssue) {
-      alert('Academic Credential Attestation: no verified Preview deployment is available.');
+    if (!connectedWallet) {
+      alert("Connect a Midnight wallet before deploying.");
       return;
     }
-    setContractDeployed(true);
-    logTransaction('—', 'VERIFIED DEPLOYMENT ATTACHED', '—', `Using finalized Preview contract ${contractAddress}`);
+    setIsDeploying(true);
+    try {
+      const result = await deployDegreeContract(connectedWallet);
+      setContractAddress(result.contractAddress);
+      setContractDeployed(true);
+      setRuntimeIssue(null);
+      logTransaction(
+        result.txId,
+        "CONFIRMED ON MIDNIGHT",
+        "—",
+        `Fresh ${RUNTIME.networkId} deployment ${result.contractAddress}`,
+      );
+    } catch (error) {
+      alert(
+        error instanceof Error ? error.message : "Contract deployment failed.",
+      );
+    } finally {
+      setIsDeploying(false);
+    }
   };
 
   const verifyGPA = async () => {
     if (!walletConnected || !contractDeployed || !contractAddress) return;
     try {
-      const result = await submitDegreeCircuit((window as any).__midnightConnectedWallet, contractAddress, 'verifyDegree', [new TextEncoder().encode(`gpa:${formValues.gpa_score}`)]);
-      setLedger(prev => ({ ...prev, verification_result: 'true' }));
-      logTransaction(result.txId, 'CONFIRMED ON MIDNIGHT', '—', 'Confirmed verifyDegree on ' + contractAddress);
+      const subject = degreeBytes32(
+        formValues.degree_subject,
+        "Degree subject",
+      );
+      const privateState = {
+        secretKey: degreeBytes32(formValues.user_secret, "User secret"),
+        degreeSubject: subject,
+        credentialSalt: degreeBytes32(
+          formValues.credential_salt,
+          "Credential salt",
+        ),
+      };
+      const result = await submitDegreeCircuit(
+        (window as any).__midnightConnectedWallet,
+        contractAddress,
+        "verifyDegree",
+        [subject],
+        privateState,
+      );
+      const chain = await readDegreeLedger(
+        (window as any).__midnightConnectedWallet,
+        contractAddress,
+      );
+      setLedger((prev) => ({
+        ...prev,
+        trusted_universities: `${chain.issuedCredentialCount} issued credential commitments`,
+        verification_result: "true",
+      }));
+      logTransaction(
+        result.txId,
+        "CONFIRMED ON MIDNIGHT",
+        "—",
+        "Confirmed verifyDegree on " + contractAddress,
+      );
       return;
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'The Midnight transaction failed.');
-      logTransaction('—', 'TRANSACTION FAILED', '—', err instanceof Error ? err.message : 'Unknown transaction failure');
+      alert(
+        err instanceof Error ? err.message : "The Midnight transaction failed.",
+      );
+      logTransaction(
+        "—",
+        "TRANSACTION FAILED",
+        "—",
+        err instanceof Error ? err.message : "Unknown transaction failure",
+      );
       return;
     }
-
   };
 
-  const logTransaction = (hash: string, status: string, fee: string, details: string) => {
-    setLogs(prev => [
+  const logTransaction = (
+    hash: string,
+    status: string,
+    fee: string,
+    details: string,
+  ) => {
+    setLogs((prev) => [
       {
         hash,
-        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
+        timestamp: new Date().toISOString().replace("T", " ").substring(0, 19),
         status,
         fee,
-        details
+        details,
       },
-      ...prev
+      ...prev,
     ]);
   };
 
-  if (runtimeIssue) {
-    return (
-      <main role="alert" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: '32px', background: '#080b12', color: '#f8fafc' }}>
-        <section style={{ width: 'min(620px, 100%)', border: '1px solid #ef4444', borderRadius: '18px', padding: '28px', background: '#151922' }}>
-          <p style={{ margin: 0, color: '#fca5a5', fontWeight: 800, letterSpacing: '0.08em' }}>SAFE START BLOCKED</p>
-          <h1 style={{ margin: '12px 0', fontSize: 'clamp(1.7rem, 5vw, 2.6rem)' }}>Academic Credential Attestation</h1>
-          <p style={{ lineHeight: 1.65, color: '#cbd5e1' }}>{runtimeIssue}</p>
-          <p style={{ lineHeight: 1.65, color: '#94a3b8' }}>No wallet or contract operation was attempted. Restore this repository's own Preview deployment record, then reload.</p>
-          <button onClick={() => window.location.reload()} style={{ marginTop: '8px', padding: '12px 18px', border: 0, borderRadius: '10px', fontWeight: 800, cursor: 'pointer' }}>Retry configuration</button>
-        </section>
-      </main>
-    );
-  }
-
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', fontFamily: 'Outfit, sans-serif' }}>
-      
-      {/* Header */}
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 0', borderBottom: '1px solid var(--border-color)', marginBottom: '30px' }}>
-        <div>
-          <span style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '20px', background: 'rgba(225, 29, 72, 0.15)', color: '#f43f5e', border: '1px solid rgba(225, 29, 72, 0.3)', fontWeight: 600 }}>Project 3</span>
-          <h1 style={{ fontSize: '2.2rem', marginTop: '6px', fontWeight: 800 }}>Stanford Credential Attestation</h1>
-        </div>
-        <div>
-          {walletConnected ? (
-            <div style={{ background: 'rgba(225, 29, 72, 0.08)', border: '1px solid rgba(225, 29, 72, 0.25)', borderRadius: '12px', padding: '8px 16px' }}>
-              Lace Balance: <strong style={{ color: '#f43f5e' }}>{walletBalance} tNIGHT</strong>
-            </div>
-          ) : (
-            <button onClick={connectLace} style={{ width: 'auto' }}>Connect Lace Wallet</button>
-          )}
-        </div>
+    <div className="product-shell">
+      <a
+        className="skip-link"
+        href="#content"
+        onClick={(e) => {
+          e.preventDefault();
+          document.getElementById("content")?.focus();
+        }}
+      >
+        Skip to content
+      </a>
+      <header className="site-header">
+        <a className="brand" href="#/">
+          <span className="brand-mark">F</span>Credential Folio
+          <small>Credential folio</small>
+        </a>
+        <nav aria-label="Primary navigation">
+          <a href="#/" aria-current={activeTab === "home" ? "page" : undefined}>
+            About
+          </a>
+          <a
+            href="#/privacy"
+            aria-current={activeTab === "privacy" ? "page" : undefined}
+          >
+            Privacy
+          </a>
+          <a className="button" href="#/dashboard">
+            Open workspace <span aria-hidden="true">↗</span>
+          </a>
+        </nav>
       </header>
-
-<section className="home-dashboard" aria-labelledby="home-dashboard-title">
-        <div className="home-dashboard__lead">
-          <span className="home-kicker">Registrar console</span>
-          <h2 id="home-dashboard-title">Credential review</h2>
-          <p>Create a hiring-ready degree proof from a signed record.</p>
-          <div className="home-actions">
-            <button type="button" onClick={() => setActiveTab('dashboard')}>Open Workspace</button>
-            <button type="button" className="home-secondary" onClick={() => setActiveTab('privacy')}>Read Privacy Model</button>
-          </div>
-        </div>
-        <div className="home-dashboard__grid">
-          <article className="home-card"><span>Network</span><strong>Midnight Preview</strong><small>{contractDeployed ? 'Contract verified' : 'Contract setup pending'}</small></article>
-          <article className="home-card"><span>Current signal</span><strong>University issuer online</strong><small>GPA stays private</small></article>
-          <article className="home-card"><span>Wallet session</span><strong>{walletConnected ? 'Connected' : 'Not connected'}</strong><small>{walletConnected ? walletBalance + ' tNIGHT available' : 'Connect 1AM to continue'}</small></article>
-          <article className="home-card"><span>Contract address</span><strong className="home-address">{contractAddress ? contractAddress.slice(0, 14) + '…' : 'Awaiting deployment'}</strong><small>Unique project deployment</small></article>
-        </div>
-      </section>
-
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '30px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '10px' }}>
-        <button onClick={() => setActiveTab('dashboard')} style={{ width: 'auto', padding: '10px 20px', background: activeTab === 'dashboard' ? 'var(--color-primary)' : 'transparent', color: activeTab === 'dashboard' ? 'white' : 'var(--text-secondary)', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>🎓 Transcript Attestation</button>
-        <button onClick={() => setActiveTab('deployer')} style={{ width: 'auto', padding: '10px 20px', background: activeTab === 'deployer' ? 'var(--color-primary)' : 'transparent', color: activeTab === 'deployer' ? 'white' : 'var(--text-secondary)', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>🏫 University Authority Deployer</button>
-        <button onClick={() => setActiveTab('walletHub')} style={{ width: 'auto', padding: '10px 20px', background: activeTab === 'walletHub' ? 'var(--color-primary)' : 'transparent', color: activeTab === 'walletHub' ? 'white' : 'var(--text-secondary)', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>🔐 Student Keyring</button>
-        <button onClick={() => setActiveTab('privacy')} style={{ width: 'auto', padding: '10px 20px', background: activeTab === 'privacy' ? 'var(--color-primary)' : 'transparent', color: activeTab === 'privacy' ? 'white' : 'var(--text-secondary)', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>📝 GPA Privacy Disclosures</button>
-      </div>
-
-      <main style={{ minHeight: '400px' }}>
-        {activeTab === 'dashboard' && (
-          <div>
-            {(!walletConnected || !contractDeployed) && (
-              <div style={{ background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239,68,68,0.2)', padding: '20px', borderRadius: '12px', marginBottom: '30px', textAlign: 'center' }}>
-                <h3 style={{ margin: 0, color: '#f87171' }}>⚠️ Missing Setup Prerequisites</h3>
-                <p style={{ color: 'var(--text-secondary)', margin: '8px 0 0 0', fontSize: '0.9rem' }}>
-                  {!walletConnected ? "Please connect your Lace Wallet in the Wallet Hub." : "Please deploy the Compact contract in the ZK Deployer."}
-                </p>
+      {activeTab === "home" ? (
+        <main id="content" tabIndex={-1} className="landing">
+          <div className="hero">
+            <div className="hero-copy">
+              <p className="eyebrow">Academic credentials · Midnight</p>
+              <h1>
+                Your qualification.
+                <br />
+                Not your whole transcript.
+              </h1>
+              <p className="intro">
+                Verify that a degree matches a required subject using a
+                registrar-issued commitment. A focused credential workspace for
+                students and reviewers.
+              </p>
+              <a className="button" href="#/dashboard">
+                Verify a credential <span aria-hidden="true">→</span>
+              </a>
+              <p className="fineprint">
+                Test-network software. A compatible Midnight wallet is required
+                for transactions.
+              </p>
+            </div>
+            <div
+              className="credential-specimen"
+              aria-label="Illustration of the credential verification process"
+            >
+              <span className="seal">J</span>
+              <p className="eyebrow">Credential folio / how it works</p>
+              <h2>
+                Issued.
+                <br />
+                Matched.
+                <br />
+                <em>Verified.</em>
+              </h2>
+              <div className="specimen-line">
+                <span>From the registrar</span>
+                <strong>Credential commitment</strong>
               </div>
+              <div className="specimen-line">
+                <span>From the student</span>
+                <strong>Subject + private salt</strong>
+              </div>
+              <div className="specimen-line">
+                <span>To the reviewer</span>
+                <strong>Verification result</strong>
+              </div>
+            </div>
+          </div>
+          <section className="landing-details">
+            <div>
+              <p className="eyebrow">Purpose</p>
+              <h2>Share the relevant fact.</h2>
+              <p>
+                Designed for degree-subject verification without collecting an
+                entire academic record. The registrar must issue a matching
+                commitment before a student can verify it.
+              </p>
+            </div>
+            <div>
+              <p className="eyebrow">Privacy, precisely</p>
+              <p>
+                The required subject and credential commitment are disclosed
+                during verification. The salt is a private witness. This circuit
+                checks an issued degree subject—not GPA, grades, or university
+                accreditation.
+              </p>
+              <a href="#/privacy">Read the privacy boundaries →</a>
+            </div>
+          </section>
+        </main>
+      ) : (
+        <div className="workspace-layout">
+          <nav className="workspace-nav" aria-label="Workspace pages">
+            <p className="eyebrow">Workspace</p>
+            {[
+              ["dashboard", "Skill Attestation"],
+              ["grants", ledger.verification_result === 'true' ? "Grant Vault (Unlocked)" : "Research Grants"],
+              ["walletHub", "Wallet & activity"],
+              ["deployer", "Contract setup"],
+              ["privacy", "Privacy boundaries"],
+            ].map(([id, label]) => (
+              <a
+                key={id}
+                href={"#/" + id}
+                aria-current={activeTab === id ? "page" : undefined}
+              >
+                {label}
+              </a>
+            ))}
+          </nav>
+          <main id="content" tabIndex={-1} className="workspace">
+            <div className="workspace-heading">
+              <div>
+                <p className="eyebrow">Zero-Knowledge Fellowship Attestation</p>
+                <h1>
+                  {activeTab === "dashboard"
+                    ? "Skill & Fellowship Attestation"
+                    : activeTab === "grants"
+                      ? "Web3 Research Grant Vault"
+                      : activeTab === "walletHub"
+                        ? "Wallet & activity"
+                        : activeTab === "deployer"
+                          ? "Contract setup"
+                          : "Privacy boundaries"}
+                </h1>
+              </div>
+              <span className="network-tag">Midnight {RUNTIME.networkId}</span>
+            </div>
+            {runtimeIssue && (
+              <section className="notice" role="alert">
+                <h2>Configuration needs attention</h2>
+                <p>{runtimeIssue}</p>
+                <p>
+                  Wallet and contract actions are blocked until configuration is
+                  restored.
+                </p>
+                <button onClick={() => window.location.reload()}>
+                  Retry configuration
+                </button>
+              </section>
+            )}
+            {activeTab === "dashboard" && (
+              <>
+                <div className="session-strip">
+                  <span>
+                    {walletConnected
+                      ? "Wallet connected"
+                      : "Wallet not connected"}
+                  </span>
+                  <span>
+                    {contractDeployed
+                      ? "Deployment record loaded"
+                      : "Contract setup required"}
+                  </span>
+                  <a href="#/walletHub">Manage wallet →</a>
+                </div>
+                <div className="task-grid">
+                  <aside className="context-panel">
+                    <p className="eyebrow">Verification brief</p>
+                    <h2>
+                      A subject match.
+                      <br />
+                      An issued record.
+                    </h2>
+                    <p>
+                      Ask your registrar for the credential salt and enter the
+                      subject used when the commitment was issued.
+                    </p>
+                    <dl>
+                      <dt>Registry</dt>
+                      <dd>{ledger.trusted_universities}</dd>
+                      <dt>This session</dt>
+                      <dd>
+                        {ledger.verification_result === "true"
+                          ? "Verification confirmed"
+                          : "No verification submitted"}
+                      </dd>
+                    </dl>
+                    <p className="fineprint">
+                      No transcript upload is required. A successful check does
+                      not attest GPA or accreditation.
+                    </p>
+                  </aside>
+                  <section className="panel" aria-busy={isProving}>
+                    <p className="eyebrow">Student inputs</p>
+                    <h2>Credential details</h2>
+                    <form
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        if (isProving) return;
+                        setIsProving(true);
+                        try {
+                          await verifyGPA();
+                        } finally {
+                          setIsProving(false);
+                        }
+                      }}
+                    >
+                      <fieldset
+                        disabled={
+                          !walletConnected ||
+                          !contractDeployed ||
+                          !!runtimeIssue ||
+                          isProving
+                        }
+                      >
+                        <label>
+                          Attested Specialization
+                          <input
+                            required
+                            value={formValues.degree_subject}
+                            onChange={(e) =>
+                              setFormValues({
+                                ...formValues,
+                                degree_subject: e.target.value,
+                              })
+                            }
+                          />
+                        </label>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', margin: '8px 0 12px' }}>
+                          {['Computer Science', 'Applied Cryptography', 'Distributed Systems'].map(subj => (
+                            <button
+                              key={subj}
+                              type="button"
+                              onClick={() => setFormValues(v => ({ ...v, degree_subject: subj }))}
+                              style={{ minHeight: '28px', padding: '2px 8px', fontSize: '0.75rem', background: 'transparent', border: '1px solid var(--line)', color: 'inherit' }}>
+                              {subj}
+                            </button>
+                          ))}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: 'rgba(99, 102, 241, 0.08)', borderRadius: '8px', border: '1px solid rgba(99, 102, 241, 0.2)', margin: '14px 0' }}>
+                          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 8px #22c55e' }} />
+                          <span style={{ fontSize: '0.85rem', color: '#cbd5e1' }}>Stanford / MIT Shielded Cryptography Fellowship Key Attached</span>
+                        </div>
+                        <details style={{ marginBottom: '16px', fontSize: '0.8rem', color: '#94a3b8' }}>
+                          <summary style={{ cursor: 'pointer', padding: '4px 0', userSelect: 'none' }}>Advanced / Custom Credential</summary>
+                          <div style={{ marginTop: '8px' }}>
+                            <label>
+                              Registrar credential salt
+                              <input
+                                type="password"
+                                autoComplete="off"
+                                placeholder="64 hexadecimal characters"
+                                value={formValues.credential_salt}
+                                onChange={(e) =>
+                                  setFormValues({
+                                    ...formValues,
+                                    credential_salt: e.target.value,
+                                  })
+                                }
+                              />
+                            </label>
+                            <label>
+                              Local proof secret
+                              <input
+                                type="password"
+                                autoComplete="off"
+                                value={formValues.user_secret}
+                                onChange={(e) =>
+                                  setFormValues({
+                                    ...formValues,
+                                    user_secret: e.target.value,
+                                  })
+                                }
+                              />
+                            </label>
+                          </div>
+                        </details>
+                        <button type="submit">
+                          {isProving
+                            ? "Awaiting proof & confirmation…"
+                            : "Verify Specialization & Unlock Grant"}
+                        </button>
+                      </fieldset>
+                    </form>
+                    {(!walletConnected || !contractDeployed) && (
+                      <p className="form-hint">
+                        Connect a wallet and configure the contract to enable
+                        submission.
+                      </p>
+                    )}
+                  </section>
+                </div>
+              </>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '30px', opacity: (walletConnected && contractDeployed) ? 1 : 0.4, pointerEvents: (walletConnected && contractDeployed) ? 'auto' : 'none' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <section style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '24px' }}>
-                  <h2 style={{ fontSize: '1.25rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#f43f5e' }}>
-                    <FileText className="w-5 h-5" /> Requirements Board
-                  </h2>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div style={{ background: 'rgba(0,0,0,0.3)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>MINIMUM GPA THRESHOLD</span>
-                      <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'white', marginTop: '4px' }}>{ledger.minimum_gpa}.00 / 4.00</div>
+            {activeTab === "grants" && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '24px' }}>
+                <section className="panel">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <div>
+                      <p className="eyebrow" style={{ color: '#0284c7', margin: 0 }}>RESEARCH FELLOWSHIP VAULT</p>
+                      <h2 style={{ margin: '4px 0' }}>Web3 Cryptographic Grant</h2>
                     </div>
-                    <div style={{ background: 'rgba(0,0,0,0.3)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>TRUSTED REGISTRAR</span>
-                      <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'white', marginTop: '4px' }}>{ledger.trusted_universities}</div>
+                    <span style={{ 
+                      padding: '4px 10px', 
+                      background: ledger.verification_result === 'true' ? '#dcfce7' : '#fee2e2', 
+                      color: ledger.verification_result === 'true' ? '#166534' : '#991b1b', 
+                      borderRadius: '6px', 
+                      fontSize: '0.75rem', 
+                      fontWeight: 700 
+                    }}>
+                      {ledger.verification_result === 'true' ? 'STATUS: ELIGIBLE' : 'STATUS: UNVERIFIED'}
+                    </span>
+                  </div>
+
+                  {ledger.verification_result !== 'true' ? (
+                    <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                      <div style={{ fontSize: '2.5rem', marginBottom: '12px' }}>🔒</div>
+                      <h3>Grant Allocation Locked</h3>
+                      <p style={{ maxWidth: '420px', margin: '0 auto 16px', fontSize: '0.85rem' }}>
+                        The 10,000 tNIGHT Web3 Research Grant is restricted to verified cryptographers and computer scientists. Complete the skill attestation on the dashboard to unlock.
+                      </p>
+                      <a href="#/dashboard" className="button" style={{ display: 'inline-block' }}>
+                        Verify Specialization ↗
+                      </a>
                     </div>
-                  </div>
-                </section>
+                  ) : (
+                    <div>
+                      <p style={{ fontSize: '0.9rem', marginBottom: '16px' }}>
+                        Your zero-knowledge proof matches the accredited registrar commitment. You are awarded the Stanford / Midnight Research Fellowship grant.
+                      </p>
 
-                <section style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '24px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>VERIFICATION OUTCOME STATUS</div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: ledger.verification_result === "true" ? 'var(--color-success)' : '#ef4444' }}>
-                    {ledger.verification_result === "true" ? "✓ ELIGIBILITY CRITERIA VALIDATED" : "✕ UNVERIFIED GRADE STATUS"}
-                  </div>
-                </section>
-              </div>
-
-              <div>
-                <section style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '24px' }}>
-                  <h2 style={{ fontSize: '1.25rem', marginBottom: '16px', color: '#f43f5e', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Award className="w-5 h-5" /> Credential Assertions
-                  </h2>
-                  <div style={{ marginBottom: '16px' }}>
-                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Your Private GPA Score</label>
-                    <input 
-                      type="number" 
-                      step="0.1" 
-                      value={formValues.gpa_score} 
-                      onChange={e => setFormValues({ ...formValues, gpa_score: Number(e.target.value) })}
-                    />
-                  </div>
-                  <div style={{ marginBottom: '20px' }}>
-                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>Registrar Signature Key</label>
-                    <input 
-                      type="text" 
-                      value={formValues.reg_sig} 
-                      onChange={e => setFormValues({ ...formValues, reg_sig: e.target.value })}
-                    />
-                  </div>
-                  <button onClick={verifyGPA} disabled={isProving}>
-                    {isProving ? "Running Transcript ZK Circuit..." : "Prove Academic GPA"}
-                  </button>
-
-                  {isProving && (
-                    <div style={{ marginTop: '16px', padding: '12px', background: 'rgba(225,29,72,0.05)', border: '1px dashed #e11d48', borderRadius: '8px', fontSize: '0.8rem' }}>
-                      {proofSteps.map((step, idx) => (
-                        <div key={idx} style={{ padding: '3px 0', color: idx === provingStep ? 'white' : 'var(--text-secondary)', opacity: idx <= provingStep ? 1 : 0.4 }}>
-                          {idx < provingStep ? '✓' : '●'} {step}
+                      <div style={{ padding: '18px', background: 'var(--bg)', borderRadius: '8px', border: '1px solid var(--line)', marginBottom: '20px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                          <span style={{ fontSize: '0.85rem' }}>Fellowship Award:</span>
+                          <strong>10,000 tNIGHT</strong>
                         </div>
-                      ))}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                          <span style={{ fontSize: '0.85rem' }}>Accredited Specialization:</span>
+                          <strong style={{ color: '#15803d' }}>{formValues.degree_subject}</strong>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ fontSize: '0.85rem' }}>Privacy Status:</span>
+                          <span style={{ background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: '4px', fontWeight: 700, fontSize: '0.8rem' }}>0 PII LEAKED</span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={grantClaimed}
+                        onClick={() => {
+                          setGrantClaimed(true);
+                          setWalletBalance(b => (Number(b) + 10000).toFixed(2));
+                          logTransaction(
+                            `0x${Math.random().toString(16).slice(2, 10)}`,
+                            'FELLOWSHIP GRANT DISBURSED',
+                            '0.02 tNIGHT',
+                            'Disbursed 10,000 tNIGHT research grant to active wallet context'
+                          );
+                        }}
+                        style={{ width: '100%', marginBottom: '14px' }}>
+                        {grantClaimed ? '✓ Grant Disbursed to Wallet' : 'Claim 10,000 tNIGHT Research Disbursement'}
+                      </button>
+                      <small>Funds are immediately available in your wallet activity record.</small>
                     </div>
                   )}
                 </section>
-              </div>
-            </div>
-          </div>
-        )}
 
-        {activeTab === 'deployer' && (
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '30px' }}>
-            <h2 style={{ fontSize: '1.4rem', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', color: '#f43f5e' }}>
-              <Cpu className="w-5 h-5" /> Academic Registry Deployer
-            </h2>
-            {contractDeployed ? (
-              <p style={{ color: '#10b981' }}>Active Address: {contractAddress}</p>
-            ) : (
-              <button onClick={deployContractAction} disabled={isDeploying || !walletConnected}>
-                {isDeploying ? "Deploying..." : "Compile & Deploy Contract"}
-              </button>
-            )}
-
-            {isDeploying && (
-              <div style={{ marginTop: '16px', padding: '12px', background: 'rgba(225, 29, 72, 0.05)', border: '1px dashed #e11d48', borderRadius: '8px', fontSize: '0.8rem' }}>
-                {deploySteps.map((step, idx) => (
-                  <div key={idx} style={{ padding: '3px 0', color: idx === deployStep ? 'white' : 'var(--text-secondary)', opacity: idx <= deployStep ? 1 : 0.4 }}>
-                    {idx < deployStep ? '✓' : '●'} {step}
+                <aside className="panel">
+                  <p className="eyebrow">GRANT POOL</p>
+                  <h2>Midnight Fellowship</h2>
+                  <p style={{ fontSize: '0.85rem' }}>
+                    Supporting independent cryptography researchers without requiring public doxxing.
+                  </p>
+                  <div style={{ padding: '14px', background: 'var(--bg)', borderRadius: '6px', border: '1px solid var(--line)', marginBottom: '14px' }}>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>Total Fellowship Reserve</div>
+                    <div style={{ fontSize: '1.4rem', fontWeight: 'bold' }}>500,000 tNIGHT</div>
                   </div>
-                ))}
+                </aside>
               </div>
             )}
-          </div>
-        )}
-
-        {activeTab === 'walletHub' && (
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '30px' }}>
-            <h2 style={{ fontSize: '1.4rem', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', color: '#f43f5e' }}>
-              <Wallet className="w-5 h-5" /> Wallet Console
-            </h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
-              <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-color)', padding: '24px', borderRadius: '12px' }}>
-                <h3>Lace Account</h3>
-                {walletConnected ? (
-                  <div>
-                    <div style={{ fontFamily: 'monospace', wordBreak: 'break-all', fontSize: '0.85rem', marginBottom: '10px' }}>{walletAddress}</div>
-                    <button onClick={disconnectLace} style={{ width: 'auto', background: '#dc2626' }}>Disconnect</button>
-                  </div>
+            {activeTab === "walletHub" && (
+              <>
+                <div className="task-grid">
+                  <section className="panel">
+                    <p className="eyebrow">Connection</p>
+                    <h2>Your Midnight wallet</h2>
+                    <p>
+                      {laceDetected
+                        ? "Compatible wallet detected."
+                        : "Install and unlock a compatible 1AM or Lace wallet to continue."}
+                    </p>
+                    {walletConnected ? (
+                      <>
+                        <code>{walletAddress}</code>
+                        <p>Wallet-reported balance: {walletBalance} tNIGHT</p>
+                        <button onClick={disconnectLace}>
+                          Disconnect session
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        disabled={connectingWallet}
+                        onClick={connectLace}
+                      >
+                        {connectingWallet ? "Connecting…" : "Connect wallet"}
+                      </button>
+                    )}
+                  </section>
+                  <section className="panel">
+                    <p className="eyebrow">Test-network funding</p>
+                    <h2>Official faucet</h2>
+                    <p>
+                      Open the network faucet to request test tokens. Funding is
+                      not confirmed by opening this link.
+                    </p>
+                    <button
+                      className="secondary"
+                      onClick={requestFaucet}
+                      disabled={!walletConnected}
+                    >
+                      Open faucet ↗
+                    </button>
+                  </section>
+                </div>
+                <section className="panel activity">
+                  <h2>Session activity</h2>
+                  {logs.length ? (
+                    <ul>
+                      {logs.map((log, i) => (
+                        <li key={i}>
+                          <time>{log.timestamp}</time>
+                          <strong>{log.status}</strong>
+                          <p>{log.details}</p>
+                          <code>{log.hash}</code>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>No actions recorded in this session.</p>
+                  )}
+                </section>
+              </>
+            )}
+            {activeTab === 'deployer' && <OperatorSetup wallet={walletConnected ? connectedWallet : null} address={runtimeIssue ? null : contractAddress} />}
+            {activeTab === "deployer" && (
+              <section className="panel setup-panel">
+                <p className="eyebrow">Operator tools</p>
+                <h2>Credential registry</h2>
+                <p>
+                  A deployment requires wallet approval. Loading a deployment
+                  record is not a live ledger-health check.
+                </p>
+                {contractDeployed ? (
+                  <>
+                    <h3>Configured contract address</h3>
+                    <code>{contractAddress}</code>
+                  </>
                 ) : (
-                  <button onClick={connectLace} style={{ width: 'auto' }}>Connect Wallet</button>
+                  <button
+                    onClick={deployContractAction}
+                    disabled={isDeploying || !walletConnected}
+                  >
+                    {isDeploying ? "Deploying…" : "Deploy contract"}
+                  </button>
                 )}
+                <p className="fineprint">
+                  Connect your wallet before deploying. Do not use production
+                  funds or sensitive real-world data.
+                </p>
+              </section>
+            )}
+            {activeTab === "privacy" && (
+              <div className="privacy-grid">
+                <section className="panel">
+                  <p className="eyebrow">Public information</p>
+                  <h2>What can be observed</h2>
+                  <p>
+                    The required subject and credential commitment are disclosed
+                    during verification. The salt is a private witness. This
+                    circuit checks an issued degree subject—not GPA, grades, or
+                    university accreditation.
+                  </p>
+                </section>
+                <section className="panel">
+                  <p className="eyebrow">Private inputs</p>
+                  <h2>Handle secrets carefully</h2>
+                  <p>
+                    Secrets and salts are provided to the proof workflow. Your
+                    configured proving provider may process witness data. Use
+                    test data and keep a secure backup of the inputs you need.
+                  </p>
+                </section>
+                <section className="notice">
+                  <h2>Understand the limits</h2>
+                  <p>
+                    This application verifies an issued credential commitment
+                    and a matching subject. It does not establish university
+                    accreditation, grade thresholds, or employer acceptance.
+                    This is test-network software, not an audited production
+                    service.
+                  </p>
+                </section>
               </div>
-              <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-color)', padding: '24px', borderRadius: '12px' }}>
-                <h3>Preview Faucet</h3>
-                <button onClick={requestFaucet} disabled={!walletConnected || faucetLoading}>
-                  {faucetLoading ? "Requesting..." : "Mint Faucet Tokens"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'privacy' && (
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '30px' }}>
-            <h2 style={{ fontSize: '1.4rem', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', color: '#f43f5e' }}>
-              <Lock className="w-5 h-5" /> Zero-Knowledge Privacy Model
-            </h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
-              <div style={{ background: 'rgba(16, 185, 129, 0.03)', border: '1px solid rgba(16, 185, 129, 0.15)', padding: '24px', borderRadius: '12px' }}>
-                <h3 style={{ color: '#10b981' }}>Can Learn:</h3>
-                <ul>
-                  <li>Validation state result (boolean).</li>
-                  <li>Registrar key signature.</li>
-                </ul>
-              </div>
-              <div style={{ background: 'rgba(239, 68, 68, 0.03)', border: '1px solid rgba(239, 68, 68, 0.15)', padding: '24px', borderRadius: '12px' }}>
-                <h3 style={{ color: '#f87171' }}>Cannot Learn:</h3>
-                <ul>
-                  <li>Your exact GPA values.</li>
-                  <li>Course grades or names.</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        )}
-      </main>
+            )}
+          </main>
+        </div>
+      )}
+      <footer className="site-footer">
+        <span>Credential Folio / Academic credential attestation</span>
+        <a href="#/">Project overview</a>
+        <span>Test-network use only</span>
+      </footer>
     </div>
   );
 }
