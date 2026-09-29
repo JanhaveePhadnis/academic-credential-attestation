@@ -14,13 +14,13 @@ Academic Credential Attestation verifies an accredited university credential and
 
 ## Privacy model
 
-University registration and proof outcome can be inspected. Student identity, exact GPA, course history, and signed credential payload are not disclosed by the application.
+Issued commitment count and proof outcome can be inspected. Student identity, subject, course history, and credential salt are not disclosed by the application.
 
 ## User journey
 
 1. Registrar registers an accredited university.
 2. Applicant presents a signed credential.
-3. The circuit checks the required subject and signature.
+3. The circuit recomputes the private subject-and-salt commitment and checks the requested subject.
 4. A relying party receives the policy result.
 
 ## Success criteria
@@ -28,4 +28,4 @@ University registration and proof outcome can be inspected. Student identity, ex
 - Accredited issuers are enforced.
 - Valid credentials pass.
 - Subject mismatches fail.
-- Unaccredited signatures fail.
+- Unissued credential commitments fail.
